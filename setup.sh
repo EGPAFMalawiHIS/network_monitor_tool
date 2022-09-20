@@ -5,6 +5,16 @@ if [ ! -d /opt/egpaf/monitor ]; then
   sudo mkdir -p /opt/egpaf/monitor
 fi
 
+# remove .env file if it exists
+if [ -f ./.env ]; then
+  sudo rm ./.env
+fi
+
+# remove monitor.service file if it exists
+if [ -f ./monitor.service ]; then
+  sudo rm ./monitor.service
+fi
+
 # create an function that captures environment variables
 function capturEnv {
     # capture the environment variables
@@ -18,22 +28,47 @@ function capturEnv {
     echo "CHSU=$chsu" >> ./.env
     echo "CHSUPORT=$chsuport" >> ./.env
 
-    suco cp ./.env /opt/egpaf/monitor/.env
+    sudo cp ./.env /opt/egpaf/monitor/.env
+}
+
+function createMonitorFile {
+    # remove the file if it exists
+    if [ -f ./monitor.service ]; then
+        sudo rm ./monitor.service
+    fi
+    echo "
+[Unit]
+Description=EGPAF NETWORK MONITOR
+After=network.target
+
+[Service]
+Type=simple
+
+Restart=always
+KillMode=process
+WorkingDirectory = /opt/egpaf/monitor/
+
+User=$USER
+ExecStart=/bin/bash ./monitor.sh
+
+[Install]
+WantedBy=multi-user.target
+    " >> ./monitor.service
 }
 
 # create a function that creates a network monitor service
 function createService {
     # create the service file
+    createMonitorFile
     sudo cp ./monitor.sh /opt/egpaf/monitor/monitor.sh
     sudo chmod +x /opt/egpaf/monitor/monitor.sh
-    sudo cp ./monitor.service /etc/systemd/system/monitor.service
+    sudo cp ./monitor.service /etc/systemd/system/egpaf.monitor.service
     sudo systemctl daemon-reload
-    sudo systemctl enable monitor.service
-    sudo systemctl start monitor.service
+    sudo systemctl enable egpaf.monitor.service
+    sudo systemctl start egpaf.monitor.service
 }
 
 # First check if there is an existing environment
-
 if [ -f /opt/egpaf/monitor/.env ]; then
     echo "Existing environment found. Below are the settings in .env"
     echo "----------------------------------------------------------"
@@ -55,20 +90,20 @@ else
 fi
 
 # Secondly check if there is an existing service
-if [ -f /etc/systemd/system/monitor.service ]; then
+if [ -f /etc/systemd/system/egpaf.monitor.service ]; then
     echo "Existing service found. Below are the settings in monitor.service"
     echo "----------------------------------------------------------"
-    cat /etc/systemd/system/monitor.service
+    cat /etc/systemd/system/egpaf.monitor.service
     echo "----------------------------------------------------------"
     echo "Do you want to overwrite the existing service? (y/n)"
     read overwrite
     if [ "$overwrite" == "y" ]; then
         echo "Overwriting existing service"
         # disable the service
-        sudo systemctl stop monitor.service
-        sudo systemctl disable monitor.service
+        sudo systemctl stop egpaf.monitor.service
+        sudo systemctl disable egpaf.monitor.service
         # remove the service
-        rm /etc/systemd/system/monitor.service
+        rm /etc/systemd/system/egpaf.monitor.service
         createService
     else
         echo "Exiting setup"
