@@ -2,17 +2,17 @@
 
 GW=`/sbin/ip route | awk '/default/ { print $3 }'`
 checkdns=`cat /etc/resolv.conf | awk '/nameserver/ {print $2}' | awk 'NR == 1 {print; exit}'`
-checkdomain=google.com
+checkdomain=10.40.2.20
 
 #some functions
 
 function portscan
 {
-  tput setaf 6; echo "Starting port scan of $checkdomain port 80"; tput sgr0;
-  if nc -zw1 $checkdomain  80; then
-    tput setaf 2; echo "Port scan good, $checkdomain port 80 available"; tput sgr0;
+  tput setaf 6; echo "Starting port scan of $checkdomain port 3306"; tput sgr0;
+  if nc -zw1 $checkdomain  3306; then
+    tput setaf 2; echo "Port scan good, $checkdomain port 3306 available"; tput sgr0;
   else
-    echo "Port scan of $checkdomain port 80 failed."
+    echo "Port scan of $checkdomain port 3306 failed."
   fi
 }
 
