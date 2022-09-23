@@ -2,14 +2,45 @@
 
 GW=`/sbin/ip route | awk '/default/ { print $3 }'`
 checkdns=`cat /etc/resolv.conf | awk '/nameserver/ {print $2}' | awk 'NR == 1 {print; exit}'`
-checkdomain=10.40.2.20
+
+# read key pair values in .env file
+source ./.env
+
+checkml=$MLABIP
+checkport=$MLABPORT
+
+api="$CHSU:$CHSUPORT"
 
 #some functions
+
+function bandwidth {
+  startime=$(date +%s)
+  startdate=$(date)
+  sudo iperf3 -c $MLABIP -bidir | tee ./log/test.log
+  endtime=$(date +%s)
+  cat ./log/test.log | awk 'BEGIN{ found=0} /\- \-/{found=1} {if (found) print }'
+  echo "Time taken: $((endtime-startime)) seconds"
+  echo "Start time: $startdate"
+  echo "End time: $(date)"
+}
+
+function remove_three_months_files {
+  find ./log -type f -mtime +90 -exec rm {} \;
+}
+
+# loop evey 5 minutes
+while true
+do
+  bandwidth
+  remove_three_months_files
+  sleep 300
+done
+
 
 function portscan
 {
   tput setaf 6; echo "Starting port scan of $checkdomain port 3306"; tput sgr0;
-  if nc -zw1 $checkdomain  3306; then
+  if nc -zw1 $checkdomain  $checkport; then
     tput setaf 2; echo "Port scan good, $checkdomain port 3306 available"; tput sgr0;
   else
     echo "Port scan of $checkdomain port 3306 failed."
@@ -49,42 +80,42 @@ function pingdns
   fi
 }
 
-function httpreq
-{
-  tput setaf 6; echo && echo "Checking for HTTP Connectivity"; tput sgr0;
-  case "$(curl -s --max-time 2 -I $checkdomain | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
-  [23]) tput setaf 2; echo "HTTP connectivity is up"; tput sgr0;;
-  5) echo "The web proxy won't let us through";exit 1;;
-  *)echo "Something is wrong with HTTP connections. Go check it."; exit 1;;
-  esac
-#  exit 0
-}
+# function httpreq
+# {
+#   tput setaf 6; echo && echo "Checking for HTTP Connectivity"; tput sgr0;
+#   case "$(curl -s --max-time 2 -I $checkdomain | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
+#   [23]) tput setaf 2; echo "HTTP connectivity is up"; tput sgr0;;
+#   5) echo "The web proxy won't let us through";exit 1;;
+#   *)echo "Something is wrong with HTTP connections. Go check it."; exit 1;;
+#   esac
+#   exit 0
+# }
 
 
-#Ping gateway first to verify connectivity with LAN
-tput setaf 6; echo "Pinging gateway ($GW) to check for LAN connectivity" && echo; tput sgr0;
-if [ "$GW" = "" ]; then
-    tput setaf 1;echo "There is no gateway. Probably disconnected..."; tput sgr0;
-#    exit 1
-fi
+# #Ping gateway first to verify connectivity with LAN
+# tput setaf 6; echo "Pinging gateway ($GW) to check for LAN connectivity" && echo; tput sgr0;
+# if [ "$GW" = "" ]; then
+#     tput setaf 1;echo "There is no gateway. Probably disconnected..."; tput sgr0;
+# #    exit 1
+# fi
 
-ping $GW -c 4
+# ping $GW -c 4
 
-if [ $? -eq 0 ]
-then
-  tput setaf 6; echo && echo "LAN Gateway pingable. Proceeding with internet connectivity check."; tput sgr0;
-  pingdns
-  pingnet
-  portscan
-  httpreq
-  exit 0
-else
-  echo && echo "Something is wrong with LAN (Gateway unreachable)"
-  pingdns
-  pingnet
-  portscan
-  httpreq
+# if [ $? -eq 0 ]
+# then
+#   tput setaf 6; echo && echo "LAN Gateway pingable. Proceeding with internet connectivity check."; tput sgr0;
+#   pingdns
+#   pingnet
+#   portscan
+#   httpreq
+#   exit 0
+# else
+#   echo && echo "Something is wrong with LAN (Gateway unreachable)"
+#   pingdns
+#   pingnet
+#   portscan
+#   httpreq
 
-  #Insert any command you like here
-#  exit 1
-fi
+#   #Insert any command you like here
+# #  exit 1
+# fi

@@ -15,6 +15,9 @@ if [ -f ./monitor.service ]; then
   sudo rm ./monitor.service
 fi
 
+# install local debian file
+sudo dpkg -i ./iperf3_3.9-1_amd64.deb
+
 # create an function that captures environment variables
 function capturEnv {
     # capture the environment variables
