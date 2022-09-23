@@ -12,30 +12,113 @@ checkport=$MLABPORT
 api="$CHSU:$CHSUPORT"
 
 #some functions
+function convert_bit_to_megabit {
+    echo "scale=2; $1 / 1000000" | bc
+}
+
+function get_api_key {
+    # get the api key from the api
+    api_key=`curl -s $api/api_key`
+    echo $api_key
+}
+
+function send_data_to_api {
+  # get response status from api
+  echo "Sending data to api"
+  echo "-------------------"
+  echo "Data to send: $1"
+  api_key='129290fhf'
+  response=`curl --write-out '%{http_code}' --output /dev/null -s -X POST -H "Content-Type: application/json" -d '{"api_key":"'$api_key'", "data": "'$1'"}}' $api`
+  if [ $response -eq 200 ]; then
+    echo "Data sent successfully"
+  else
+    echo "Error sending data"
+  fi
+  echo $response
+}
+
+function update_failed_records_in_database {
+  sqlite3 ./log/transaction.db "$1"
+}
+
+# process all records not synced
+function process_records {
+    # get all records not synced
+    records=`sqlite3 -json ./log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 30;"`
+    statements=""
+    # loop through each record in the json array
+
+    echo ${records}
+    for row in $(echo "${records}" | jq -r '.[] | @base64'); do
+        _jq() {
+            echo ${row} | base64 --decode | jq -r ${1}
+        }
+
+        echo $(_jq '.id')
+        echo $(_jq '.start_time')
+        # get the id of the record
+        id=`_jq '.id'`
+        # get the start time of the record
+        start_time=`_jq '.start_time'`
+        # get the end time of the record
+        end_time=`_jq '.end_time'`
+        # get the sender bits of the record
+        sender_bits=`_jq '.sender_bits'`
+        # get the receiver bits of the record
+        receiver_bits=`_jq '.receiver_bits'`
+        # get the online status of the record
+        online=`_jq '.online'`
+        # get the sync status of the record
+        sync_status=`_jq '.sync_status'`
+        # create the data to send to the api
+        data="{\"id\":\"$id\",\"start_time\":\"$start_time\",\"end_time\":\"$end_time\",\"sender_bits\":\"$sender_bits\",\"receiver_bits\":\"$receiver_bits\",\"online\":\"$online\"}"
+        # send the data to the api
+        echo $data
+        echo 'About to send data to api'
+        response= send_data_to_api "$data" 
+        echo $response
+        if [[ $response -eq "200" ]]; then
+          # create the statement to update the record
+          statement="UPDATE transactions SET sync_status = 1 WHERE id = '$id';"
+          # append the statement to the statements variable
+          statements="$statements $statement"
+        fi
+    done
+    # update the records
+    update_failed_records_in_database "$statements"
+}
+
+function failed_connection {
+  # insert into sqlite database
+  uuid=$(cat /proc/sys/kernel/random/uuid)
+  enddate=$(date)
+  sqlite3 ./log/transaction.db "INSERT INTO transactions (id, start_time, end_time, online, sync_status) VALUES ('$uuid','$1', '$enddate',0, 0);"
+  echo "Failed connection"
+}
+
 
 function bandwidth {
-  startime=$(date +%s)
   startdate=$(date)
-  sudo iperf3 -c $MLABIP -bidir | tee ./log/test.log
-  endtime=$(date +%s)
-  cat ./log/test.log | awk 'BEGIN{ found=0} /\- \-/{found=1} {if (found) print }'
-  echo "Time taken: $((endtime-startime)) seconds"
-  echo "Start time: $startdate"
-  echo "End time: $(date)"
+  iperf3 -c $MLABIP -bidir -J | tee ./log/test.json
+  startime=$(jq '.start.timestamp.time' ./log/test.json)
+  # check if startime is null or empty
+  if [ -z "$startime" ]; then
+    failed_connection "$startdate"
+  else
+    endtime=$(jq '.end.timestamp.time' ./log/test.json)
+    senderbits=$(jq '.end.sum_sent.bits_per_second' ./log/test.json)
+    receiverbits=$(jq '.end.sum_received.bits_per_second' ./log/test.json)
+    # convert bits to megabits
+    senderbits=$(convert_bit_to_megabit $senderbits)
+    receiverbits=$(convert_bit_to_megabit $receiverbits)
+    # insert into sqlite database
+    uuid=$(cat /proc/sys/kernel/random/uuid)
+    sqlite3 ./log/transaction.db "INSERT INTO transactions (id, start_time, end_time, sender_bits, receiver_bits, online, sync_status) VALUES ('$uuid','$startdate', '$enddate', $senderbits, $receiverbits, 1, 0);"
+    # send data to api
+    data="{\"id\":\"$uuid\",\"start_time\":\"$startdate\",\"end_time\":\"$enddate\",\"sender_bits\":\"$senderbits\",\"receiver_bits\":\"$receiverbits\",\"online\":1,\"sync_status\":1}"
+    send_data_to_api "$data"
+  fi
 }
-
-function remove_three_months_files {
-  find ./log -type f -mtime +90 -exec rm {} \;
-}
-
-# loop evey 5 minutes
-while true
-do
-  bandwidth
-  remove_three_months_files
-  sleep 300
-done
-
 
 function portscan
 {
@@ -47,75 +130,10 @@ function portscan
   fi
 }
 
-function pingnet
-{
-  #Google has the most reliable host name. Feel free to change it.
-  tput setaf 6; echo "Pinging $checkdomain to check for internet connection." && echo; tput sgr0;
-  ping $checkdomain -c 4
-
-  if [ $? -eq 0 ]
-    then
-      tput setaf 2; echo && echo "$checkdomain pingable. Internet connection is most probably available."&& echo ; tput sgr0;
-      #Insert any command you like here
-    else
-      echo && echo "Could not establish internet connection. Something may be wrong here." >&2
-      #Insert any command you like here
-#      exit 1
-  fi
-}
-
-function pingdns
-{
-  #Grab first DNS server from /etc/resolv.conf
-  tput setaf 6; echo "Pinging first DNS server in resolv.conf ($checkdns) to check name resolution" && echo; tput sgr0;
-  ping $checkdns -c 4
-    if [ $? -eq 0 ]
-    then
-      tput setaf 6; echo && echo "$checkdns pingable. Proceeding with domain check."; tput sgr0;
-      #Insert any command you like here
-    else
-      echo && echo "Could not establish internet connection to DNS. Something may be wrong here." >&2
-      #Insert any command you like here
-#     exit 1
-  fi
-}
-
-# function httpreq
-# {
-#   tput setaf 6; echo && echo "Checking for HTTP Connectivity"; tput sgr0;
-#   case "$(curl -s --max-time 2 -I $checkdomain | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
-#   [23]) tput setaf 2; echo "HTTP connectivity is up"; tput sgr0;;
-#   5) echo "The web proxy won't let us through";exit 1;;
-#   *)echo "Something is wrong with HTTP connections. Go check it."; exit 1;;
-#   esac
-#   exit 0
-# }
-
-
-# #Ping gateway first to verify connectivity with LAN
-# tput setaf 6; echo "Pinging gateway ($GW) to check for LAN connectivity" && echo; tput sgr0;
-# if [ "$GW" = "" ]; then
-#     tput setaf 1;echo "There is no gateway. Probably disconnected..."; tput sgr0;
-# #    exit 1
-# fi
-
-# ping $GW -c 4
-
-# if [ $? -eq 0 ]
-# then
-#   tput setaf 6; echo && echo "LAN Gateway pingable. Proceeding with internet connectivity check."; tput sgr0;
-#   pingdns
-#   pingnet
-#   portscan
-#   httpreq
-#   exit 0
-# else
-#   echo && echo "Something is wrong with LAN (Gateway unreachable)"
-#   pingdns
-#   pingnet
-#   portscan
-#   httpreq
-
-#   #Insert any command you like here
-# #  exit 1
-# fi
+# loop evey 5 minutes
+while true
+do
+  # start a new thread to check the bandwidth
+  process_records
+  sleep 300
+done

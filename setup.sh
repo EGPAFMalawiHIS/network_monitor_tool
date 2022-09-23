@@ -10,10 +10,20 @@ if [ -f ./.env ]; then
   sudo rm ./.env
 fi
 
+# create monitor sqlite database file does not exists
+if [ ! -f /opt/egpaf/monitor/log/transaction.db ]; then 
+    touch /opt/egpaf/monitor/log/transaction.db
+    # create table
+    sqlite3 /opt/egpaf/monitor/log/transaction.db "CREATE TABLE transactions (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, sender_bits TEXT, receiver_bits TEXT, online INTEGER NOT NULL, sync_status INTEGER NOT NULL);"
+fi 
+
 # remove monitor.service file if it exists
 if [ -f ./monitor.service ]; then
   sudo rm ./monitor.service
 fi
+
+# install jq to read json just incase the serve does have it
+sudo apt install jq
 
 # install local debian file
 sudo dpkg -i ./iperf3_3.9-1_amd64.deb
