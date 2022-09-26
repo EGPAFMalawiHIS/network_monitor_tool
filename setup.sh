@@ -14,7 +14,7 @@ fi
 if [ ! -f /opt/egpaf/monitor/log/transaction.db ]; then 
     touch /opt/egpaf/monitor/log/transaction.db
     # create table
-    sqlite3 /opt/egpaf/monitor/log/transaction.db "CREATE TABLE transactions (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, sender_bits TEXT, receiver_bits TEXT, online INTEGER NOT NULL, sync_status INTEGER NOT NULL);"
+    sqlite3 /opt/egpaf/monitor/log/transaction.db "CREATE TABLE transactions (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, sender_bits TEXT, receiver_bits TEXT, online INTEGER NOT NULL, sync_status INTEGER NOT NULL); CREATE INDEX idx_transactions_sync_status ON transactions (sync_status); CREATE TABLE scans (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, port TEXT, online INTEGER NOT NULL, sync_status INTEGER NOT NULL); CREATE INDEX idx_scans_sync_status ON scans (sync_status);"
 fi 
 
 # remove monitor.service file if it exists
