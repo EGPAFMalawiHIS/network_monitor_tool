@@ -5,6 +5,11 @@ if [ ! -d /opt/egpaf/monitor ]; then
   sudo mkdir -p /opt/egpaf/monitor
 fi
 
+# create log folder
+if [ ! -d /opt/egpaf/monitor/log ]; then
+  sudo mkdir -p /opt/egpaf/monitor/log
+fi
+
 # remove .env file if it exists
 if [ -f ./.env ]; then
   sudo rm ./.env
