@@ -3,11 +3,14 @@
 # check if egpaf monitor folder exists
 if [ ! -d /opt/egpaf/monitor ]; then
   sudo mkdir -p /opt/egpaf/monitor
+  sudo chmod 777 /opt/egpaf
+  sudo chmod 777 /opt/egpaf/monitor
 fi
 
 # create log folder
 if [ ! -d /opt/egpaf/monitor/log ]; then
   sudo mkdir -p /opt/egpaf/monitor/log
+  sudo chmod 777 /opt/egpaf/monitor/log
 fi
 
 # remove .env file if it exists
@@ -17,7 +20,8 @@ fi
 
 # create monitor sqlite database file does not exists
 if [ ! -f /opt/egpaf/monitor/log/transaction.db ]; then 
-    touch /opt/egpaf/monitor/log/transaction.db
+    sudo touch /opt/egpaf/monitor/log/transaction.db
+    sudo chmod 777 /opt/egpaf/monitor/log/transaction.db
     # create table
     sqlite3 /opt/egpaf/monitor/log/transaction.db "CREATE TABLE transactions (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, sender_bits TEXT, receiver_bits TEXT, online INTEGER NOT NULL, sync_status INTEGER NOT NULL); CREATE INDEX idx_transactions_sync_status ON transactions (sync_status); CREATE TABLE scans (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, port TEXT, online INTEGER NOT NULL, sync_status INTEGER NOT NULL); CREATE INDEX idx_scans_sync_status ON scans (sync_status);"
 fi 
