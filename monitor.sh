@@ -8,7 +8,7 @@ source ./.env
 
 checkml=$MLABIP
 checkport=$MLABPORT
-
+interval=$DURATION
 api="$CHSU:$CHSUPORT"
 
 #some functions
@@ -154,6 +154,5 @@ do
   bandwidth &
   portscan &
   delete_synced_records_in_database &
-  # wait for 5 minutes
-  sleep 300
+  sleep $interval
 done

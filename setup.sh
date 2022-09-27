@@ -44,13 +44,16 @@ function capturEnv {
     read -p 'Enter Molecular Lab Port: ' port
     read -p 'CHSU IP/HOST Address: ' chsu
     read -p 'CHSU Port: ' chsuport
+    read -p 'Enter Bandwidth test interval in seconds: ' duration
 
     echo "MLABIP=$ip" >> ./.env
     echo "MLABPORT=$port" >> ./.env
     echo "CHSU=$chsu" >> ./.env
     echo "CHSUPORT=$chsuport" >> ./.env
+    echo "DURATION=$duration" >> ./.env
 
     sudo cp ./.env /opt/egpaf/monitor/.env
+    sudo chmod 777 /opt/egpaf/monitor/.env
 }
 
 function createMonitorFile {
@@ -85,6 +88,7 @@ function createService {
     sudo cp ./monitor.sh /opt/egpaf/monitor/monitor.sh
     sudo chmod +x /opt/egpaf/monitor/monitor.sh
     sudo cp ./monitor.service /etc/systemd/system/egpaf.monitor.service
+    sudo chmod 777 /etc/systemd/system/egpaf.monitor.service
     sudo systemctl daemon-reload
     sudo systemctl enable egpaf.monitor.service
     sudo systemctl start egpaf.monitor.service
@@ -100,11 +104,10 @@ if [ -f /opt/egpaf/monitor/.env ]; then
     read overwrite
     if [ "$overwrite" == "y" ]; then
         echo "Overwriting existing environment"
-        rm /opt/egpaf/monitor/.env 
+        sudo rm /opt/egpaf/monitor/.env 
         capturEnv
     else
-        echo "Exiting setup"
-        exit 1
+        echo "Leaving existing environment intact"
     fi
 else
     echo "No existing environment found. Creating new environment"
@@ -125,7 +128,7 @@ if [ -f /etc/systemd/system/egpaf.monitor.service ]; then
         sudo systemctl stop egpaf.monitor.service
         sudo systemctl disable egpaf.monitor.service
         # remove the service
-        rm /etc/systemd/system/egpaf.monitor.service
+        sudo rm /etc/systemd/system/egpaf.monitor.service
         createService
     else
         echo "Exiting setup"
