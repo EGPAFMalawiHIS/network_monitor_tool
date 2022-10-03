@@ -23,7 +23,7 @@ if [ ! -f /opt/egpaf/monitor/log/transaction.db ]; then
     sudo touch /opt/egpaf/monitor/log/transaction.db
     sudo chmod 777 /opt/egpaf/monitor/log/transaction.db
     # create table
-    sqlite3 /opt/egpaf/monitor/log/transaction.db "CREATE TABLE transactions (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, sender_bits TEXT, receiver_bits TEXT, online INTEGER NOT NULL, sync_status INTEGER NOT NULL); CREATE INDEX idx_transactions_sync_status ON transactions (sync_status); CREATE TABLE scans (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, port TEXT, online INTEGER NOT NULL, sync_status INTEGER NOT NULL); CREATE INDEX idx_scans_sync_status ON scans (sync_status);"
+    sqlite3 /opt/egpaf/monitor/log/transaction.db "CREATE TABLE transactions (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, sender_bits TEXT, receiver_bits TEXT, online INTEGER NOT NULL, molecular_address TEXT NOT NULL, port TEXT NOT NULL, scan_status INTEGER, sync_status INTEGER NOT NULL); CREATE INDEX idx_transactions_sync_status ON transactions (sync_status);"
 fi 
 
 # remove monitor.service file if it exists
@@ -45,12 +45,14 @@ function capturEnv {
     read -p 'CHSU IP/HOST Address: ' chsu
     read -p 'CHSU Port: ' chsuport
     read -p 'Enter Bandwidth test interval in seconds: ' duration
+    read -p 'Enter site id: ' siteid
 
     echo "MLABIP=$ip" >> ./.env
     echo "MLABPORT=$port" >> ./.env
     echo "CHSU=$chsu" >> ./.env
     echo "CHSUPORT=$chsuport" >> ./.env
     echo "DURATION=$duration" >> ./.env
+    echo "SITEID=$siteid" >> ./.env
 
     sudo cp ./.env /opt/egpaf/monitor/.env
     sudo chmod 777 /opt/egpaf/monitor/.env

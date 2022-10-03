@@ -9,6 +9,7 @@ source ./.env
 checkml=$MLABIP
 checkport=$MLABPORT
 interval=$DURATION
+site=$SITEID
 api="$CHSU:$CHSUPORT"
 
 #some functions
@@ -74,8 +75,11 @@ function process_records {
         online=`_jq '.online'`
         # get the sync status of the record
         sync_status=`_jq '.sync_status'`
+        molecular_address=`_jq '.molecular_address'`
+        port=`_jq '.port'`
+        scan_status=`_jq '.scan_status'`
         # create the data to send to the api
-        data="{\"id\":\"$id\",\"start_time\":$start_time,\"end_time\":\"$end_time\",\"sender_bits\":\"$sender_bits\",\"receiver_bits\":\"$receiver_bits\",\"online\":\"$online\"}"
+        data="{\"site_id\":\"$site\",\"test_time\":\"$start_time\",\"uplink\":\"$senderbits\",\"downlink\":\"$receiverbits\",\"online\":\"$online\",\"scan_status\":$scan_status,\"ip_address\":\"$molecular_address\",\"port\":\"$port\"}"
         # send the data to the api
         echo $data
         echo 'About to send data to api'
@@ -96,7 +100,7 @@ function failed_connection {
   # insert into sqlite database
   uuid=$(cat /proc/sys/kernel/random/uuid)
   enddate=$(date)
-  sqlite3 ./log/transaction.db "INSERT INTO transactions (id, start_time, end_time, online, sync_status) VALUES ('$uuid','$1', '$enddate',0, 0);"
+  sqlite3 ./log/transaction.db "INSERT INTO transactions (id, start_time, end_time, online, molecular_address, port, scan_status, sync_status) VALUES ('$uuid','$1','$enddate',0, '$checkml', '$checkport', $2, 0);"
   echo "Failed connection"
 }
 
@@ -104,10 +108,11 @@ function failed_connection {
 function bandwidth {
   startdate=$(date +%a,\ %d\ %b\ %Y\ %T)
   iperf3 -c $MLABIP -bidir -J | tee ./log/test.json
+  scan=$(portscan)
   startime=$(jq '.start.timestamp.time' ./log/test.json)
   # check if startime is null or empty
   if [ -z "$startime" ]; then
-    failed_connection "$startdate"
+    failed_connection "$startdate" $scan
   else
     # create an end date in 24hr format 
     endtime=$(date +%a,\ %d\ %b\ %Y\ %T)
@@ -118,9 +123,9 @@ function bandwidth {
     receiverbits=$(convert_bit_to_megabit $receiverbits)
     # insert into sqlite database
     uuid=$(cat /proc/sys/kernel/random/uuid)
-    sqlite3 ./log/transaction.db "INSERT INTO transactions (id, start_time, end_time, sender_bits, receiver_bits, online, sync_status) VALUES ('$uuid','$startdate', '$endtime', $senderbits, $receiverbits, 1, 0);"
+    sqlite3 ./log/transaction.db "INSERT INTO transactions (id, start_time, end_time, sender_bits, receiver_bits, online, molecular_address, port, scan_status, sync_status) VALUES ('$uuid','$startdate', '$endtime', $senderbits, $receiverbits, 1, '$checkml', '$checkport', '$scan', 0);"
     # send data to api
-    data="{\"id\":\"$uuid\",\"start_time\":\"$startdate\",\"end_time\":\"$endtime\",\"sender_bits\":\"$senderbits\",\"receiver_bits\":\"$receiverbits\",\"online\":1}"
+    data="{\"site_id\":\"$site\",\"test_time\":\"$startdate\",\"uplink\":\"$senderbits\",\"downlink\":\"$receiverbits\",\"online\":1,\"scan_status\":$scan,\"ip_address\":\"$checkml\",\"port\":\"$checkport\"}"
     response= send_data_to_api "$data"
     echo $response
     if [[ $response -eq "200" ]]; then
@@ -132,18 +137,18 @@ function bandwidth {
 
 function portscan
 {
-  startdate=$(date)
+  result=0
   uuid=$(cat /proc/sys/kernel/random/uuid)
   tput setaf 6; echo "Starting port scan of $checkml port 3306"; tput sgr0;
   if nc -zw1 $checkml  $checkport; then
-    enddate=$(date)
-    sqlite3 ./log/transaction.db "INSERT INTO scans (id, start_time, end_time, port, online, sync_status) VALUES ('$uuid','$startdate', '$enddate', '$checkport', 1, 0);"
+    # update result to 1
+    result=1
     tput setaf 2; echo "Port scan good, $checkml port 3306 available"; tput sgr0;
   else
-    enddate=$(date)
-    sqlite3 ./log/transaction.db "INSERT INTO scans (id, start_time, end_time, port, online, sync_status) VALUES ('$uuid','$startdate', '$enddate', '$checkport', 0, 0);"
     echo "Port scan of $checkml port 3306 failed."
   fi
+  # return the result
+  echo $result
 }
 
 # loop evey 5 minutes
@@ -152,7 +157,6 @@ do
   # start a new thread to check the bandwidth
   process_records &
   bandwidth &
-  portscan &
   delete_synced_records_in_database &
   sleep $interval
 done
