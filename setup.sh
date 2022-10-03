@@ -5,40 +5,81 @@ sudo chmod +x uninstall.sh
 
 # check if egpaf monitor folder exists
 if [ ! -d /opt/egpaf/monitor ]; then
-  sudo mkdir -p /opt/egpaf/monitor
-  sudo chmod 777 /opt/egpaf
-  sudo chmod 777 /opt/egpaf/monitor
+    sudo mkdir -p /opt/egpaf/monitor
+    sudo chmod 777 /opt/egpaf
+    sudo chmod 777 /opt/egpaf/monitor
 fi
 
 # create log folder
 if [ ! -d /opt/egpaf/monitor/log ]; then
-  sudo mkdir -p /opt/egpaf/monitor/log
-  sudo chmod 777 /opt/egpaf/monitor/log
+    sudo mkdir -p /opt/egpaf/monitor/log
+    sudo chmod 777 /opt/egpaf/monitor/log
 fi
 
 # remove .env file if it exists
 if [ -f ./.env ]; then
-  sudo rm ./.env
+    sudo rm ./.env
+fi
+
+# check if jq is installed
+if ! [ -x "$(command -v jq)" ]; then
+    echo 'jq is not installed.' >&2
+    echo 'Installing jq...'
+    sudo apt-get install jq
+    # exit if jq is not installed
+    if ! [ -x "$(command -v jq)" ]; then
+        echo 'jq installation failed.' >&2
+        echo 'Please install jq manually and try again.' >&2
+        exit 1
+    fi
+fi
+
+# check if sqlite3 is installed
+if ! [ -x "$(command -v sqlite3)" ]; then
+    echo 'sqlite3 is not installed.' >&2
+    echo 'Installing sqlite3...'
+    sudo apt-get install sqlite3
+    # exit if sqlite3 is not installed
+    if ! [ -x "$(command -v sqlite3)" ]; then
+        echo 'sqlite3 installation failed.' >&2
+        echo 'Please install sqlite3 manually and try again.' >&2
+        exit 1
+    fi
+fi
+
+# check if curl is installed
+if ! [ -x "$(command -v curl)" ]; then
+    echo 'curl is not installed.' >&2
+    echo 'Installing curl...'
+    sudo apt-get install curl
+    # exit if curl is not installed
+    if ! [ -x "$(command -v curl)" ]; then
+        echo 'curl installation failed.' >&2
+        echo 'Please install curl manually and try again.' >&2
+        exit 1
+    fi
+fi
+
+# check if iperf3 is installed
+if ! [ -x "$(command -v iperf3)" ]; then
+    echo 'iperf3 is not installed.' >&2
+    echo 'Installing iperf3...'
+    # install local debian file
+    sudo dpkg -i ./iperf3_3.9-1_amd64.deb
 fi
 
 # create monitor sqlite database file does not exists
-if [ ! -f /opt/egpaf/monitor/log/transaction.db ]; then 
+if [ ! -f /opt/egpaf/monitor/log/transaction.db ]; then
     sudo touch /opt/egpaf/monitor/log/transaction.db
     sudo chmod 777 /opt/egpaf/monitor/log/transaction.db
     # create table
     sqlite3 /opt/egpaf/monitor/log/transaction.db "CREATE TABLE transactions (id TEXT PRIMARY KEY NOT NULL, start_time TEXT, end_time TEXT, sender_bits TEXT, receiver_bits TEXT, online INTEGER NOT NULL, molecular_address TEXT NOT NULL, port TEXT NOT NULL, scan_status INTEGER, sync_status INTEGER NOT NULL); CREATE INDEX idx_transactions_sync_status ON transactions (sync_status);"
-fi 
+fi
 
 # remove monitor.service file if it exists
 if [ -f ./monitor.service ]; then
-  sudo rm ./monitor.service
+    sudo rm ./monitor.service
 fi
-
-# install jq to read json just incase the serve does have it
-sudo apt install jq
-
-# install local debian file
-sudo dpkg -i ./iperf3_3.9-1_amd64.deb
 
 # create an function that captures environment variables
 function capturEnv {
@@ -54,12 +95,12 @@ function capturEnv {
         read -p 'Invalid interval. Please re-enter Interval: ' duration
     done
 
-    echo "MLABIP=$ip" >> ./.env
-    echo "MLABPORT=$port" >> ./.env
-    echo "CHSU=$chsu" >> ./.env
-    echo "CHSUPORT=$chsuport" >> ./.env
-    echo "DURATION=$duration" >> ./.env
-    echo "SITEID=$siteid" >> ./.env
+    echo "MLABIP=$ip" >>./.env
+    echo "MLABPORT=$port" >>./.env
+    echo "CHSU=$chsu" >>./.env
+    echo "CHSUPORT=$chsuport" >>./.env
+    echo "DURATION=$duration" >>./.env
+    echo "SITEID=$siteid" >>./.env
 
     sudo cp ./.env /opt/egpaf/monitor/.env
     sudo chmod 777 /opt/egpaf/monitor/.env
@@ -87,7 +128,7 @@ ExecStart=/bin/bash ./monitor.sh
 
 [Install]
 WantedBy=multi-user.target
-    " >> ./monitor.service
+    " >>./monitor.service
 }
 
 # create a function that creates a network monitor service
@@ -107,13 +148,13 @@ function createService {
 if [ -f /opt/egpaf/monitor/.env ]; then
     echo "Existing environment found. Below are the settings in .env"
     echo "----------------------------------------------------------"
-    cat /opt/egpaf/monitor/.env 
+    cat /opt/egpaf/monitor/.env
     echo "----------------------------------------------------------"
     echo "Do you want to overwrite the existing environment? (y/n)"
     read overwrite
     if [ "$overwrite" == "y" ]; then
         echo "Overwriting existing environment"
-        sudo rm /opt/egpaf/monitor/.env 
+        sudo rm /opt/egpaf/monitor/.env
         capturEnv
     else
         echo "Leaving existing environment intact"
