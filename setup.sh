@@ -86,8 +86,7 @@ function capturEnv {
     # capture the environment variables
     read -p 'Enter Molecular Lab IP/HOST Address: ' ip
     read -p 'Enter Molecular Lab Port: ' port
-    read -p 'CHSU IP/HOST Address: ' chsu
-    read -p 'CHSU Port: ' chsuport
+    read -p 'Dashboard API URL: ' chsu
     read -p 'Enter Site ID: ' siteid
     read -p 'Enter Test Interval in seconds(minimum 61): ' duration
 
@@ -98,7 +97,6 @@ function capturEnv {
     echo "MLABIP=$ip" >>./.env
     echo "MLABPORT=$port" >>./.env
     echo "CHSU=$chsu" >>./.env
-    echo "CHSUPORT=$chsuport" >>./.env
     echo "DURATION=$duration" >>./.env
     echo "SITEID=$siteid" >>./.env
 

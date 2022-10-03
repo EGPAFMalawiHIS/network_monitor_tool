@@ -10,7 +10,7 @@ checkml=$MLABIP
 checkport=$MLABPORT
 interval=$DURATION
 site=$SITEID
-api="$CHSU:$CHSUPORT"
+api=$CHSU
 
 #some functions
 function convert_bit_to_megabit {
@@ -24,16 +24,7 @@ function get_api_key {
 }
 
 function send_data_to_api {
-  # get response status from api
-  echo "Sending data to api"
-  echo "-------------------"
-  echo "Data to send: $1"
-  response=$(curl --write-out '%{http_code}' --output /dev/null -s -X POST -H "Content-Type: application/json" -d "'$1'" $api)
-  if [ $response -eq 200 ]; then
-    echo "Data sent successfully"
-  else
-    echo "Error sending data"
-  fi
+  response=$(curl --write-out '%{http_code}' --output /dev/null -s --location --request POST "$api" --header "Content-Type: application/json" --data-raw "$1")
   echo $response
 }
 
@@ -74,12 +65,13 @@ function process_records {
     port=$(_jq '.port')
     scan_status=$(_jq '.scan_status')
     # create the data to send to the api
-    data="{\"site_id\":\"$site\",\"test_time\":\"$start_time\",\"uplink\":\"$senderbits\",\"downlink\":\"$receiverbits\",\"online\":\"$online\",\"scan_status\":$scan_status,\"ip_address\":\"$molecular_address\",\"port\":\"$port\"}"
+    data="{\"site_id\":\"$site\",\"uuid\":\"$id\",\"test_time\":\"$start_time\",\"uplink\":\"$sender_bits\",\"downlink\":\"$receiver_bits\",\"online\":\"$online\",\"port_scan_status\":$scan_status,\"molecular_lab_ip\":\"$molecular_address\",\"port_scan\":\"$port\"}"
     # send the data to the api
     echo $data
     echo 'About to send data to api'
-    response= send_data_to_api "$data"
-    if [[ $response -eq 200 ]]; then
+    local response=$(send_data_to_api "$data")
+    echo $response
+    if [ $response -eq 201 ]; then
       # create the statement to update the record
       statement="UPDATE transactions SET sync_status = 1 WHERE id = '$id';"
       # append the statement to the statements variable
@@ -87,6 +79,7 @@ function process_records {
     fi
   done
   # update the records
+  echo $statements
   update_failed_records_in_database "$statements"
 }
 
@@ -94,7 +87,7 @@ function failed_connection {
   # insert into sqlite database
   uuid=$(cat /proc/sys/kernel/random/uuid)
   enddate=$(date +"%Y-%m-%d %H:%M:%S")
-  sqlite3 /opt/egpaf/monitor/log/transaction.db "INSERT INTO transactions (id, start_time, end_time, online, molecular_address, port, scan_status, sync_status) VALUES ('$uuid','$1','$enddate',0, '$checkml', '$checkport', $2, 0);"
+  sqlite3 /opt/egpaf/monitor/log/transaction.db "INSERT INTO transactions (id, start_time, end_time, online, molecular_address, port, scan_status, sync_status, sender_bits, receiver_bits) VALUES ('$uuid','$1','$enddate',0, '$checkml', '$checkport', '$2', 0, 0, 0);"
   echo "Failed connection"
 }
 
@@ -106,7 +99,7 @@ function bandwidth {
   startime=$(jq '.start.timestamp.time' /opt/egpaf/monitor/log/test.json)
   # check if startime is null or empty
   if [ -z "$startime" ]; then
-    failed_connection "$startdate" $scan
+    failed_connection "$startdate" "$scan"
   else
     # create an end date in 24hr format
     endtime=$(date +"%Y-%m-%d %H:%M:%S")
@@ -119,10 +112,11 @@ function bandwidth {
     uuid=$(cat /proc/sys/kernel/random/uuid)
     sqlite3 /opt/egpaf/monitor/log/transaction.db "INSERT INTO transactions (id, start_time, end_time, sender_bits, receiver_bits, online, molecular_address, port, scan_status, sync_status) VALUES ('$uuid','$startdate', '$endtime', $senderbits, $receiverbits, 1, '$checkml', '$checkport', '$scan', 0);"
     # send data to api
-    data="{\"site_id\":\"$site\",\"test_time\":\"$startdate\",\"uplink\":\"$senderbits\",\"downlink\":\"$receiverbits\",\"online\":1,\"scan_status\":$scan,\"ip_address\":\"$checkml\",\"port\":\"$checkport\"}"
-    response= send_data_to_api "$data"
-    echo $response
-    if [[ $response -eq "200" ]]; then
+    data="{\"site_id\":\"$site\",\"uuid\":\"$uuid\",\"test_time\":\"$startdate\",\"uplink\":\"$senderbits\",\"downlink\":\"$receiverbits\",\"online\":1,\"port_scan_status\":$scan,\"molecular_lab_ip\":\"$checkml\",\"port_scan\":\"$checkport\"}"
+    local response=$(send_data_to_api "$data")
+    # convert response to integer
+    echo "Response is $response"
+    if [[ $response -eq 201 ]]; then
       # update the record
       update_failed_records_in_database "UPDATE transactions SET sync_status = 1 WHERE id = '$uuid';"
     fi

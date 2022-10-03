@@ -1,19 +1,23 @@
 #!/bin/bash
 # warn the user about uninstalling the service
 
+function killAllMonitorProcesses {
+    # kill all monitor processes
+    echo "Killing all monitor processes"
+    sudo killall monitor.sh
+}
+
 function uninstallService {
     # check if the service exists
-    if [ -f /etc/systemd/system/egpaf-monitor.service ]; then
+    if [ -f /etc/systemd/system/egpaf.monitor.service ]; then
         # stop the service
-        sudo systemctl stop egpaf-monitor.service
+        sudo systemctl stop egpaf.monitor.service
         # disable the service
-        sudo systemctl disable egpaf-monitor.service
+        sudo systemctl disable egpaf.monitor.service
         # remove the service
-        sudo rm /etc/systemd/system/egpaf-monitor.service
+        sudo rm /etc/systemd/system/egpaf.monitor.service
         # reload the daemon
         sudo systemctl daemon-reload
-        # restart the service
-        sudo systemctl restart egpaf-monitor.service
         echo "Service removed successfully"
     else
         echo "Service does not exist"
@@ -57,6 +61,7 @@ echo "This will uninstall the service, transactions log and delete the environme
 read -p "Do you want to continue? (y/n): " uninstall
 
 if [ "$uninstall" == "y" ]; then
+    killAllMonitorProcesses
     uninstallService
     uninstallEnv
     uninstallMonitor
