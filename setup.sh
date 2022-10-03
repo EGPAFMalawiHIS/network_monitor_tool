@@ -124,7 +124,7 @@ KillMode=process
 WorkingDirectory = /opt/egpaf/monitor/
 
 User=$USER
-ExecStart=/bin/bash ./monitor.sh
+ExecStart=/bin/bash /opt/egpaf/monitor/monitor.sh
 
 [Install]
 WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-GW=`/sbin/ip route | awk '/default/ { print $3 }'`
-checkdns=`cat /etc/resolv.conf | awk '/nameserver/ {print $2}' | awk 'NR == 1 {print; exit}'`
+GW=$(/sbin/ip route | awk '/default/ { print $3 }')
+checkdns=$(cat /etc/resolv.conf | awk '/nameserver/ {print $2}' | awk 'NR == 1 {print; exit}')
 
 # read key pair values in .env file
 source ./.env
@@ -14,13 +14,13 @@ api="$CHSU:$CHSUPORT"
 
 #some functions
 function convert_bit_to_megabit {
-    echo "scale=2; $1 / 1000000" | bc
+  echo "scale=2; $1 / 1000000" | bc
 }
 
 function get_api_key {
-    # get the api key from the api
-    api_key=`curl -s $api/api_key`
-    echo $api_key
+  # get the api key from the api
+  api_key=$(curl -s $api/api_key)
+  echo $api_key
 }
 
 function send_data_to_api {
@@ -28,8 +28,7 @@ function send_data_to_api {
   echo "Sending data to api"
   echo "-------------------"
   echo "Data to send: $1"
-  api_key='129290fhf'
-  response=`curl --write-out '%{http_code}' --output /dev/null -s -X POST -H "Content-Type: application/json" -d '{"api_key":"'$api_key'", "data": "'$1'"}}' $api`
+  response=$(curl --write-out '%{http_code}' --output /dev/null -s -X POST -H "Content-Type: application/json" -d '{"data": "'$1'"}}' $api)
   if [ $response -eq 200 ]; then
     echo "Data sent successfully"
   else
@@ -43,57 +42,52 @@ function update_failed_records_in_database {
 }
 
 function delete_synced_records_in_database {
-  sqlite3 ./log/transaction.db "DELETE FROM transactions WHERE sync_status = 1; DELETE FROM scans WHERE sync_status = 1;"
+  sqlite3 ./log/transaction.db "DELETE FROM transactions WHERE sync_status = 1;"
 }
 
 # process all records not synced
 function process_records {
-    # get all records not synced
-    records=`sqlite3 -json ./log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 30;"`
-    statements=""
-    # loop through each record in the json array
+  # get all records not synced
+  records=$(sqlite3 -json ./log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 30;")
+  statements=""
+  # loop through each record in the json array
 
-    echo ${records}
-    for row in $(echo "${records}" | jq -r '.[] | @base64'); do
-        _jq() {
-            echo ${row} | base64 --decode | jq -r ${1}
-        }
+  echo ${records}
+  for row in $(echo "${records}" | jq -r '.[] | @base64'); do
+    _jq() {
+      echo ${row} | base64 --decode | jq -r ${1}
+    }
 
-        echo $(_jq '.id')
-        echo $(_jq '.start_time')
-        # get the id of the record
-        id=`_jq '.id'`
-        # get the start time of the record
-        start_time=`_jq '.start_time'`
-        # get the end time of the record
-        end_time=`_jq '.end_time'`
-        # get the sender bits of the record
-        sender_bits=`_jq '.sender_bits'`
-        # get the receiver bits of the record
-        receiver_bits=`_jq '.receiver_bits'`
-        # get the online status of the record
-        online=`_jq '.online'`
-        # get the sync status of the record
-        sync_status=`_jq '.sync_status'`
-        molecular_address=`_jq '.molecular_address'`
-        port=`_jq '.port'`
-        scan_status=`_jq '.scan_status'`
-        # create the data to send to the api
-        data="{\"site_id\":\"$site\",\"test_time\":\"$start_time\",\"uplink\":\"$senderbits\",\"downlink\":\"$receiverbits\",\"online\":\"$online\",\"scan_status\":$scan_status,\"ip_address\":\"$molecular_address\",\"port\":\"$port\"}"
-        # send the data to the api
-        echo $data
-        echo 'About to send data to api'
-        response= send_data_to_api "$data" 
-        echo $response
-        if [[ $response -eq 200 ]]; then
-          # create the statement to update the record
-          statement="UPDATE transactions SET sync_status = 1 WHERE id = '$id';"
-          # append the statement to the statements variable
-          statements="$statements $statement"
-        fi
-    done
-    # update the records
-    update_failed_records_in_database "$statements"
+    echo $(_jq '.id')
+    echo $(_jq '.start_time')
+    # get the id of the record
+    id=$(_jq '.id')
+    # get the start time of the record
+    start_time=$(_jq '.start_time')
+    # get the sender bits of the record
+    sender_bits=$(_jq '.sender_bits')
+    # get the receiver bits of the record
+    receiver_bits=$(_jq '.receiver_bits')
+    # get the online status of the record
+    online=$(_jq '.online')
+    molecular_address=$(_jq '.molecular_address')
+    port=$(_jq '.port')
+    scan_status=$(_jq '.scan_status')
+    # create the data to send to the api
+    data="{\"site_id\":\"$site\",\"test_time\":\"$start_time\",\"uplink\":\"$senderbits\",\"downlink\":\"$receiverbits\",\"online\":\"$online\",\"scan_status\":$scan_status,\"ip_address\":\"$molecular_address\",\"port\":\"$port\"}"
+    # send the data to the api
+    echo $data
+    echo 'About to send data to api'
+    response= send_data_to_api "$data"
+    if [[ $response -eq 200 ]]; then
+      # create the statement to update the record
+      statement="UPDATE transactions SET sync_status = 1 WHERE id = '$id';"
+      # append the statement to the statements variable
+      statements="$statements $statement"
+    fi
+  done
+  # update the records
+  update_failed_records_in_database "$statements"
 }
 
 function failed_connection {
@@ -113,7 +107,7 @@ function bandwidth {
   if [ -z "$startime" ]; then
     failed_connection "$startdate" $scan
   else
-    # create an end date in 24hr format 
+    # create an end date in 24hr format
     endtime=$(date +%a,\ %d\ %b\ %Y\ %T)
     senderbits=$(jq '.end.sum_sent.bits_per_second' ./log/test.json)
     receiverbits=$(jq '.end.sum_received.bits_per_second' ./log/test.json)
@@ -134,27 +128,26 @@ function bandwidth {
   fi
 }
 
-function portscan{
+function portscan {
   result=0
-  uuid=$(cat /proc/sys/kernel/random/uuid)
-  tput setaf 6; echo "Starting port scan of $checkml port 3306"; tput sgr0;
-  if nc -zw1 $checkml  $checkport; then
-    # update result to 1
+  if nc -zw1 $checkml $checkport; then
     result=1
-    tput setaf 2; echo "Port scan good, $checkml port 3306 available"; tput sgr0;
-  else
-    echo "Port scan of $checkml port 3306 failed."
   fi
   # return the result
   echo $result
 }
 
-# loop evey 5 minutes
-while true
-do
-  # start a new thread to check the bandwidth
-  process_records &
-  bandwidth &
+while true; do
+  # check if there are records not synced
+  records=$(sqlite3 -json ./log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 1;")
+  if [[ $records != "[]" ]]; then
+    # process the records
+    process_records &
+  fi
+  # delete all synced records
   delete_synced_records_in_database &
+  # run the bandwidth test
+  bandwidth &
+  # sleep for 5 minutes
   sleep $interval
 done
