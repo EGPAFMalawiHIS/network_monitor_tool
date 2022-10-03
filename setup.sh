@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# change mode uninstall.sh to executable
+sudo chmod +x uninstall.sh
+
 # check if egpaf monitor folder exists
 if [ ! -d /opt/egpaf/monitor ]; then
   sudo mkdir -p /opt/egpaf/monitor
@@ -44,8 +47,12 @@ function capturEnv {
     read -p 'Enter Molecular Lab Port: ' port
     read -p 'CHSU IP/HOST Address: ' chsu
     read -p 'CHSU Port: ' chsuport
-    read -p 'Enter Bandwidth test interval in seconds: ' duration
-    read -p 'Enter site id: ' siteid
+    read -p 'Enter Site ID: ' siteid
+    read -p 'Enter Test Interval in seconds(minimum 61): ' duration
+
+    while [ "$duration" -lt 61 ]; do
+        read -p 'Invalid interval. Please re-enter Interval: ' duration
+    done
 
     echo "MLABIP=$ip" >> ./.env
     echo "MLABPORT=$port" >> ./.env

@@ -85,7 +85,7 @@ function process_records {
         echo 'About to send data to api'
         response= send_data_to_api "$data" 
         echo $response
-        if [[ $response -eq "200" ]]; then
+        if [[ $response -eq 200 ]]; then
           # create the statement to update the record
           statement="UPDATE transactions SET sync_status = 1 WHERE id = '$id';"
           # append the statement to the statements variable
@@ -103,7 +103,6 @@ function failed_connection {
   sqlite3 ./log/transaction.db "INSERT INTO transactions (id, start_time, end_time, online, molecular_address, port, scan_status, sync_status) VALUES ('$uuid','$1','$enddate',0, '$checkml', '$checkport', $2, 0);"
   echo "Failed connection"
 }
-
 
 function bandwidth {
   startdate=$(date +%a,\ %d\ %b\ %Y\ %T)
@@ -135,8 +134,7 @@ function bandwidth {
   fi
 }
 
-function portscan
-{
+function portscan{
   result=0
   uuid=$(cat /proc/sys/kernel/random/uuid)
   tput setaf 6; echo "Starting port scan of $checkml port 3306"; tput sgr0;
