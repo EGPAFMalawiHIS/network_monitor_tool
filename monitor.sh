@@ -39,8 +39,7 @@ function delete_synced_records_in_database {
 # process all records not synced
 function process_records {
   # get all records not synced
-  records=$(sqlite3 -json /opt/egpaf/monitor/log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 30;")
-  statements=""
+  records=$(sqlite3 -json /opt/egpaf/monitor/log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 50000;")
   # loop through each record in the json array
 
   echo ${records}
@@ -74,13 +73,9 @@ function process_records {
     if [ $response -eq 201 ]; then
       # create the statement to update the record
       statement="UPDATE transactions SET sync_status = 1 WHERE id = '$id';"
-      # append the statement to the statements variable
-      statements="$statements $statement"
+      update_failed_records_in_database "$statement"
     fi
   done
-  # update the records
-  echo $statements
-  update_failed_records_in_database "$statements"
 }
 
 function failed_connection {
@@ -143,7 +138,6 @@ while true; do
   delete_synced_records_in_database &
   # run the bandwidth test
   bandwidth &
-  # sleep for 5 minutes
   echo "Sleeping for $interval seconds"
   sleep $interval
 done
