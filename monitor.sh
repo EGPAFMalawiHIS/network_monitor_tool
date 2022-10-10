@@ -60,6 +60,7 @@ function process_records {
     receiver_bits=$(_jq '.receiver_bits')
     # get the online status of the record
     online=$(_jq '.online')
+    echo "this is the online status: $online"
     molecular_address=$(_jq '.molecular_address')
     port=$(_jq '.port')
     scan_status=$(_jq '.scan_status')
@@ -93,9 +94,11 @@ function bandwidth {
   scan=$(portscan)
   startime=$(jq '.start.timestamp.time' /opt/egpaf/monitor/log/test.json)
   # check if startime is null or empty
-  if [ -z "$startime" ]; then
+  if [ -n "$startime" ]; then
+    echo 'startime is null'
     failed_connection "$startdate" "$scan"
   else
+    echo 'startime is not null. This is the value: ' $startime
     # create an end date in 24hr format
     endtime=$(date +"%Y-%m-%d %H:%M:%S")
     senderbits=$(jq '.end.sum_sent.bits_per_second' /opt/egpaf/monitor/log/test.json)
