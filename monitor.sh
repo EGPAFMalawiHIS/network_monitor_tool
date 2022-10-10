@@ -84,6 +84,14 @@ function failed_connection {
   uuid=$(cat /proc/sys/kernel/random/uuid)
   enddate=$(date +"%Y-%m-%d %H:%M:%S")
   sqlite3 /opt/egpaf/monitor/log/transaction.db "INSERT INTO transactions (id, start_time, end_time, online, molecular_address, port, scan_status, sync_status, sender_bits, receiver_bits) VALUES ('$uuid','$1','$enddate',0, '$checkml', '$checkport', '$2', 0, 0, 0);"
+  data="{ \"site_id\": \"$site\", \"uuid\": \"$uuid\", \"test_time\": \"$1\", \"uplink\": 0, \"downlink\": 0, \"online\": 0, \"port_scan_status\": $2, \"molecular_lab_ip\": \"$checkml\", \"port_scan\": \"$checkport\" }"
+  echo $data
+  local result=$(send_data_to_api "$data")
+  if [ $result -eq 201 ]; then
+    # create the statement to update the record
+    statement="UPDATE transactions SET sync_status = 1 WHERE id = '$uuid';"
+    update_failed_records_in_database "$statement"
+  fi
   echo "Failed connection"
 }
 
