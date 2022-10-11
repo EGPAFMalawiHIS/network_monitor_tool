@@ -90,7 +90,7 @@ function capturEnv {
     read -p 'Enter Site ID: ' siteid
     read -p 'Enter Test Interval in seconds(minimum 61): ' duration
 
-    while [ "$duration" -lt 61 ]; do
+    while [ "$duration" -lt 60 ]; do
         read -p 'Invalid interval. Please re-enter Interval: ' duration
     done
 

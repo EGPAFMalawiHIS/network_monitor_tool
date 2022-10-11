@@ -82,7 +82,7 @@ function process_records {
 function failed_connection {
   # insert into sqlite database
   uuid=$(cat /proc/sys/kernel/random/uuid)
-  enddate=$(date +"%Y-%m-%d %H:%M:%S")
+  enddate=$(date +"%Y-%m-%d %H:%M:%S +%Z")
   sqlite3 /opt/egpaf/monitor/log/transaction.db "INSERT INTO transactions (id, start_time, end_time, online, molecular_address, port, scan_status, sync_status, sender_bits, receiver_bits) VALUES ('$uuid','$1','$enddate',0, '$checkml', '$checkport', '$2', 0, 0, 0);"
   data="{ \"site_id\": \"$site\", \"uuid\": \"$uuid\", \"test_time\": \"$1\", \"uplink\": 0, \"downlink\": 0, \"online\": 0, \"port_scan_status\": $2, \"molecular_lab_ip\": \"$checkml\", \"port_scan\": \"$checkport\" }"
   echo $data
@@ -97,7 +97,7 @@ function failed_connection {
 
 function bandwidth {
   # date should be in mysql standard format
-  startdate=$(date +"%Y-%m-%d %H:%M:%S")
+  startdate=$(date +"%Y-%m-%d %H:%M:%S +%Z")
   iperf3 -c $MLABIP -bidir -J | tee /opt/egpaf/monitor/log/test.json
   scan=$(portscan)
   startime=$(jq '.start.timestamp.time' /opt/egpaf/monitor/log/test.json)
@@ -108,7 +108,7 @@ function bandwidth {
   else
     echo 'startime is not null. This is the value: ' $startime
     # create an end date in 24hr format
-    endtime=$(date +"%Y-%m-%d %H:%M:%S")
+    endtime=$(date +"%Y-%m-%d %H:%M:%S +%Z")
     senderbits=$(jq '.end.sum_sent.bits_per_second' /opt/egpaf/monitor/log/test.json)
     receiverbits=$(jq '.end.sum_received.bits_per_second' /opt/egpaf/monitor/log/test.json)
     # convert bits to megabits
