@@ -14,9 +14,8 @@ api=$CHSU
 
 #some functions
 function convert_bit_to_megabit {
-  local number=$(handleScientificNumbers "$1")
-  echo "$number, $1"
-  echo "scale=2; $number / 1000000" | bc
+  local real_number=$(handleScientificNumbers "$1")
+  echo "scale=2; $real_number / 1000000" | bc
 }
 
 function get_api_key {
@@ -99,10 +98,9 @@ function failed_connection {
 
 function handleScientificNumbers {
   # check if the number is in scientific notation
-  echo "handling scientific numbers $1"
   if [[ $1 == *e* ]]; then
     # convert the number to scientific notation
-    echo $(printf "%f10.2f\n" $1)
+    echo $(printf "%10.2f\n" $1)
   else
     echo $1
   fi
@@ -119,7 +117,7 @@ function bandwidth {
     echo 'startime is null'
     failed_connection "$startdate" "$scan"
   elif ! [ -n "$startime" ]; then
-    echo 'startime is not null'
+    echo 'startime is null'
     failed_connection "$startdate" "$scan"
   else
     echo 'startime is not null. This is the value: ' $startime
