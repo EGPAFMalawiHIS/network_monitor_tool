@@ -128,6 +128,9 @@ function bandwidth {
     # convert bits to megabits
     senderbits=$(convert_bit_to_megabit $senderbits)
     receiverbits=$(convert_bit_to_megabit $receiverbits)
+    # echo senderbits and receiverbits
+    echo "sender bits: $senderbits"
+    echo "reciver bits: $receiverbits"
     # insert into sqlite database
     uuid=$(cat /proc/sys/kernel/random/uuid)
     sqlite3 /opt/egpaf/monitor/log/transaction.db "INSERT INTO transactions (id, start_time, end_time, sender_bits, receiver_bits, online, molecular_address, port, scan_status, sync_status) VALUES ('$uuid','$startdate', '$endtime', $senderbits, $receiverbits, 1, '$checkml', '$checkport', '$scan', 0);"
