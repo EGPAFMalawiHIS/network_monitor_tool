@@ -39,7 +39,7 @@ Then another prompt for Dashboard URL, the URL will be used to send data of moni
 #### `Installation of the server tool at the MOLECULAR LAB`
 Once the installation is started from installation section, you will be prompted to enter the type of tool you are trying to install.\
 In this case, you need to enter `m` to install the server tool at the MOLECULAR LAB.\
-This will create a service that will be listening for incoming requests from the HUB.\
+This will create a service that will be listening for incoming requests from the HUB.
 
 ### Usage
 The monitor script will collect the following data:
