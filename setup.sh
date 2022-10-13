@@ -28,9 +28,16 @@ if ! [ -x "$(command -v jq)" ]; then
     sudo apt-get install jq
     # exit if jq is not installed
     if ! [ -x "$(command -v jq)" ]; then
-        echo 'jq installation failed.' >&2
-        echo 'Please install jq manually and try again.' >&2
-        exit 1
+     # install jq from packages folder
+        sudo dpkg -i packages/libc6_2.27-3ubuntu1_amd64.deb
+        sudo dpkg -i packages/libonig4_6.7.0-1_amd64.deb
+        sudo dpkg -i packages/libjq1_1.5+dfsg-2_amd64.deb
+        sudo dpkg -i packages/jq_1.5+dfsg-2_amd64.deb
+        if ! [ -x "$(command -v jq)" ]; then
+            echo 'jq installation failed.' >&2
+            echo 'Please install jq manually and try again.' >&2
+            exit 1
+        fi
     fi
 fi
 
