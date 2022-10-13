@@ -14,6 +14,7 @@ api=$CHSU
 
 #some functions
 function convert_bit_to_megabit {
+  local number=$(handleScientificNumbers $1)
   echo "scale=2; $1 / 1000000" | bc
 }
 
@@ -93,6 +94,16 @@ function failed_connection {
     update_failed_records_in_database "$statement"
   fi
   echo "Failed connection"
+}
+
+function handleScientificNumbers {
+  # check if the number is in scientific notation
+  if [[ $1 == *e* ]]; then
+    # convert the number to scientific notation
+    echo $(printf "%f10.2f\n" $1)
+  else
+    echo $1
+  fi
 }
 
 function bandwidth {
