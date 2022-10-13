@@ -15,6 +15,7 @@ api=$CHSU
 #some functions
 function convert_bit_to_megabit {
   local number=$(handleScientificNumbers $1)
+  echo "$number, $1"
   echo "scale=2; $number / 1000000" | bc
 }
 
