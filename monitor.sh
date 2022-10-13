@@ -99,6 +99,7 @@ function failed_connection {
 
 function handleScientificNumbers {
   # check if the number is in scientific notation
+  echo "handling scientific numbers $1"
   if [[ $1 == *e* ]]; then
     # convert the number to scientific notation
     echo $(printf "%f10.2f\n" $1)
