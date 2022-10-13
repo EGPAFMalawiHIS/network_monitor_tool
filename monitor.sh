@@ -14,7 +14,7 @@ api=$CHSU
 
 #some functions
 function convert_bit_to_megabit {
-  number=$(handleScientificNumbers $1)
+  local number=$(handleScientificNumbers "$1")
   echo "$number, $1"
   echo "scale=2; $number / 1000000" | bc
 }
@@ -115,8 +115,11 @@ function bandwidth {
   scan=$(portscan)
   startime=$(jq '.start.timestamp.time' /opt/egpaf/monitor/log/test.json)
   # check if startime is null or empty
-  if [ -n "$startime" ]; then
+  if [ -z "$startime" ]; then
     echo 'startime is null'
+    failed_connection "$startdate" "$scan"
+  elif [ -n "$startime" ]; then
+    echo 'startime is not null'
     failed_connection "$startdate" "$scan"
   else
     echo 'startime is not null. This is the value: ' $startime
