@@ -104,6 +104,28 @@ function capturEnv {
     sudo chmod 777 /opt/egpaf/monitor/.env
 }
 
+function setupHub {
+    # create the service file
+    createMonitorFile
+    sudo cp ./monitor.sh /opt/egpaf/monitor/monitor.sh
+    sudo chmod +x /opt/egpaf/monitor/monitor.sh
+    sudo cp ./monitor.service /etc/systemd/system/egpaf.monitor.service
+    sudo chmod 777 /etc/systemd/system/egpaf.monitor.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable egpaf.monitor.service
+    sudo systemctl start egpaf.monitor.service
+}
+
+function setupMolecularLab {
+    # create the service file
+    createServerFile
+    sudo cp ./server.service /etc/systemd/system/egpaf.server.service
+    sudo chmod 777 /etc/systemd/system/egpaf.server.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable egpaf.server.service
+    sudo systemctl start egpaf.server.service
+}
+
 function createMonitorFile {
     # remove the file if it exists
     if [ -f ./monitor.service ]; then
@@ -129,60 +151,85 @@ WantedBy=multi-user.target
     " >>./monitor.service
 }
 
-# create a function that creates a network monitor service
-function createService {
-    # create the service file
-    createMonitorFile
-    sudo cp ./monitor.sh /opt/egpaf/monitor/monitor.sh
-    sudo chmod +x /opt/egpaf/monitor/monitor.sh
-    sudo cp ./monitor.service /etc/systemd/system/egpaf.monitor.service
-    sudo chmod 777 /etc/systemd/system/egpaf.monitor.service
-    sudo systemctl daemon-reload
-    sudo systemctl enable egpaf.monitor.service
-    sudo systemctl start egpaf.monitor.service
+function createServerFile {
+    # remove the file if it exists
+    if [ -f ./server.service ]; then
+        sudo rm ./server.service
+    fi
+    echo "
+[Unit]
+Description=EGPAF NETWORK MONITOR SERVER
+After=network.target
+
+[Service]
+Type=simple
+
+Restart=always
+KillMode=process
+
+User=$USER
+ExecStart=iperf3 -s
+
+[Install]
+WantedBy=multi-user.target
+    " >>./server.service
 }
 
-# First check if there is an existing environment
-if [ -f /opt/egpaf/monitor/.env ]; then
-    echo "Existing environment found. Below are the settings in .env"
-    echo "----------------------------------------------------------"
-    cat /opt/egpaf/monitor/.env
-    echo "----------------------------------------------------------"
-    echo "Do you want to overwrite the existing environment? (y/n)"
-    read overwrite
-    if [ "$overwrite" == "y" ]; then
-        echo "Overwriting existing environment"
-        sudo rm /opt/egpaf/monitor/.env
+# create a function that creates a network monitor service
+function createService {
+    # First check if there is an existing environment
+    if [ -f /opt/egpaf/monitor/.env ]; then
+        echo "Existing environment found. Below are the settings in .env"
+        echo "----------------------------------------------------------"
+        cat /opt/egpaf/monitor/.env
+        echo "----------------------------------------------------------"
+        echo "Do you want to overwrite the existing environment? (y/n)"
+        read overwrite
+        if [ "$overwrite" == "y" ]; then
+            echo "Overwriting existing environment"
+            sudo rm /opt/egpaf/monitor/.env
+            capturEnv
+        else
+            echo "Leaving existing environment intact"
+        fi
+    else
+        echo "No existing environment found. Creating new environment"
         capturEnv
-    else
-        echo "Leaving existing environment intact"
     fi
-else
-    echo "No existing environment found. Creating new environment"
-    capturEnv
-fi
 
-# Secondly check if there is an existing service
-if [ -f /etc/systemd/system/egpaf.monitor.service ]; then
-    echo "Existing service found. Below are the settings in monitor.service"
-    echo "----------------------------------------------------------"
-    cat /etc/systemd/system/egpaf.monitor.service
-    echo "----------------------------------------------------------"
-    echo "Do you want to overwrite the existing service? (y/n)"
-    read overwrite
-    if [ "$overwrite" == "y" ]; then
-        echo "Overwriting existing service"
-        # disable the service
-        sudo systemctl stop egpaf.monitor.service
-        sudo systemctl disable egpaf.monitor.service
-        # remove the service
-        sudo rm /etc/systemd/system/egpaf.monitor.service
-        createService
+    # Secondly check if there is an existing service
+    if [ -f /etc/systemd/system/egpaf.monitor.service ]; then
+        echo "Existing service found. Below are the settings in monitor.service"
+        echo "----------------------------------------------------------"
+        cat /etc/systemd/system/egpaf.monitor.service
+        echo "----------------------------------------------------------"
+        echo "Do you want to overwrite the existing service? (y/n)"
+        read overwrite
+        if [ "$overwrite" == "y" ]; then
+            echo "Overwriting existing service"
+            # disable the service
+            sudo systemctl stop egpaf.monitor.service
+            sudo systemctl disable egpaf.monitor.service
+            # remove the service
+            sudo rm /etc/systemd/system/egpaf.monitor.service
+            setupHub
+        else
+            echo "Exiting setup"
+            exit 1
+        fi
     else
-        echo "Exiting setup"
-        exit 1
+        echo "No existing service found. Creating new service"
+        setupHub
     fi
-else
-    echo "No existing service found. Creating new service"
+}
+
+# Prompt user to select if they want to setup the hub or the molecular lab
+read -p "Do you want to setup the hub or the molecular lab? (h/m) " setup
+if [ "$setup" == "h" ]; then
     createService
+elif [ "$setup" == "m" ]; then
+    setupMolecularLab
+else
+    echo "Invalid selection. Exiting setup"
+    exit 1
 fi

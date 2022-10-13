@@ -7,7 +7,7 @@ function killAllMonitorProcesses {
     sudo killall monitor.sh
 }
 
-function uninstallService {
+function uninstallMonitorService {
     # check if the service exists
     if [ -f /etc/systemd/system/egpaf.monitor.service ]; then
         # stop the service
@@ -21,6 +21,23 @@ function uninstallService {
         echo "Service removed successfully"
     else
         echo "Service does not exist"
+    fi
+}
+
+function uninstallServerService {
+    # check if the service exists
+    if [ -f /etc/systemd/system/egpaf.server.service ]; then
+        # stop the service
+        sudo systemctl stop egpaf.server.service
+        # disable the service
+        sudo systemctl disable egpaf.server.service
+        # remove the service
+        sudo rm /etc/systemd/system/egpaf.server.service
+        # reload the daemon
+        sudo systemctl daemon-reload
+        echo "Server service removed successfully"
+    else
+        echo "Server service does not exist"
     fi
 }
 
@@ -57,15 +74,36 @@ function removeDirectory {
     fi
 }
 
-echo "This will uninstall the service, transactions log and delete the environment file"
-read -p "Do you want to continue? (y/n): " uninstall
+function removeHub {
+    read -p "Do you want to continue uninstalling hub? (y/n): " uninstall
+    if [ "$uninstall" == "y" ]; then
+        killAllMonitorProcesses
+        uninstallMonitorService
+        uninstallEnv
+        uninstallMonitor
+        removeDirectory
+    else
+        echo "Leaving service intact"
+    fi
+}
 
-if [ "$uninstall" == "y" ]; then
-    killAllMonitorProcesses
-    uninstallService
-    uninstallEnv
-    uninstallMonitor
-    removeDirectory
+function removeMolecularHub {
+    read -p "Do you want to continue uninstalling molecular lab? (y/n): " uninstall
+    if [ "$uninstall" == "y" ]; then
+        uninstallServerService
+    else
+        echo "Leaving service intact"
+    fi
+}
+
+echo "This will uninstall the service, transactions log and delete the environment file"
+read -p "Do you want to uninstall the hub or molecular lab ? (h/m): " uninstall
+
+if [ "$uninstall" == "h" ]; then
+    removeHub
+elif [ "$uninstall" == "m" ]; then
+    removeMolecularHub
 else
-    echo "Leaving service intact"
+    echo "Invalid selection. Exiting setup"
+    exit 1
 fi

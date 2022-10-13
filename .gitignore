@@ -1,4 +1,5 @@
 .env
 monitor.service
+server.service
 # ignore all files in log folder
 log/*
