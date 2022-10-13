@@ -228,6 +228,7 @@ KillMode=process
 
 User=$USER
 ExecStart=iperf3 -s
+ExecStop=killall iperf3
 
 [Install]
 WantedBy=multi-user.target
