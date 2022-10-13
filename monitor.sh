@@ -118,7 +118,7 @@ function bandwidth {
   if [ -z "$startime" ]; then
     echo 'startime is null'
     failed_connection "$startdate" "$scan"
-  elif [ -n "$startime" ]; then
+  elif ! [ -n "$startime" ]; then
     echo 'startime is not null'
     failed_connection "$startdate" "$scan"
   else
