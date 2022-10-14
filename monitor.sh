@@ -40,31 +40,21 @@ function delete_synced_records_in_database {
 # process all records not synced
 function process_records {
   # get all records not synced
-  records=$(sqlite3 -json /opt/egpaf/monitor/log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 50000;")
-  # loop through each record in the json array
-
-  echo ${records}
-  for row in $(echo "${records}" | jq -r '.[] | @base64'); do
-    _jq() {
-      echo ${row} | base64 --decode | jq -r ${1}
-    }
-
-    echo $(_jq '.id')
-    echo $(_jq '.start_time')
-    # get the id of the record
-    id=$(_jq '.id')
-    # get the start time of the record
-    start_time=$(_jq '.start_time')
-    # get the sender bits of the record
-    sender_bits=$(_jq '.sender_bits')
-    # get the receiver bits of the record
-    receiver_bits=$(_jq '.receiver_bits')
-    # get the online status of the record
-    online=$(_jq '.online')
-    echo "this is the online status: $online"
-    molecular_address=$(_jq '.molecular_address')
-    port=$(_jq '.port')
-    scan_status=$(_jq '.scan_status')
+  records=$(sqlite3 -list /opt/egpaf/monitor/log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 50000;")
+  # loop through ecah record in the list array
+  for record in $records
+  do
+    # get the api key
+    api_key=$(get_api_key)
+    # get the record id
+    id=$(echo $record | awk -F'|' '{print $1}')
+    start_time=$(echo $record | awk -F'|' '{print $2}')
+    sender_bits=$(echo $record | awk -F'|' '{print $4}')
+    receiver_bits=$(echo $record | awk -F'|' '{print $5}')
+    online=$(echo $record | awk -F'|' '{print $6}')
+    molecular_address=$(echo $record | awk -F'|' '{print $7}')
+    port=$(echo $record | awk -F'|' '{print $8}')
+    scan_status=$(echo $record | awk -F'|' '{print $9}')
     # create the data to send to the api
     data="{\"site_id\":\"$site\",\"uuid\":\"$id\",\"test_time\":\"$start_time\",\"uplink\":\"$sender_bits\",\"downlink\":\"$receiver_bits\",\"online\":\"$online\",\"port_scan_status\":$scan_status,\"molecular_lab_ip\":\"$molecular_address\",\"port_scan\":\"$port\"}"
     # send the data to the api
@@ -78,6 +68,43 @@ function process_records {
       update_failed_records_in_database "$statement"
     fi
   done
+  # loop through each record in the json array
+
+  # echo ${records}
+  # for row in $(echo "${records}" | jq -r '.[] | @base64'); do
+  #   _jq() {
+  #     echo ${row} | base64 --decode | jq -r ${1}
+  #   }
+
+  #   echo $(_jq '.id')
+  #   echo $(_jq '.start_time')
+  #   # get the id of the record
+  #   id=$(_jq '.id')
+  #   # get the start time of the record
+  #   start_time=$(_jq '.start_time')
+  #   # get the sender bits of the record
+  #   sender_bits=$(_jq '.sender_bits')
+  #   # get the receiver bits of the record
+  #   receiver_bits=$(_jq '.receiver_bits')
+  #   # get the online status of the record
+  #   online=$(_jq '.online')
+  #   echo "this is the online status: $online"
+  #   molecular_address=$(_jq '.molecular_address')
+  #   port=$(_jq '.port')
+  #   scan_status=$(_jq '.scan_status')
+  #   # create the data to send to the api
+  #   data="{\"site_id\":\"$site\",\"uuid\":\"$id\",\"test_time\":\"$start_time\",\"uplink\":\"$sender_bits\",\"downlink\":\"$receiver_bits\",\"online\":\"$online\",\"port_scan_status\":$scan_status,\"molecular_lab_ip\":\"$molecular_address\",\"port_scan\":\"$port\"}"
+  #   # send the data to the api
+  #   echo $data
+  #   echo 'About to send data to api'
+  #   local response=$(send_data_to_api "$data")
+  #   echo $response
+  #   if [ $response -eq 201 ]; then
+  #     # create the statement to update the record
+  #     statement="UPDATE transactions SET sync_status = 1 WHERE id = '$id';"
+  #     update_failed_records_in_database "$statement"
+  #   fi
+  # done
 }
 
 function failed_connection {
@@ -157,11 +184,21 @@ function portscan {
 
 while true; do
   # check if there are records not synced
-  records=$(sqlite3 -json /opt/egpaf/monitor/log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 1;")
-  if [[ $records != "[]" ]]; then
-    # process the records
-    process_records &
+  records=$(sqlite3 -list /opt/egpaf/monitor/log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 1;")
+  # check if there are sqlite list records
+  if [ -z "$records" ]; then
+    echo 'No records to sync'
+  elif ! [ -n "$records" ]; then
+    echo 'No records to sync'
+  else
+    echo 'There are records to sync'
+    # sync the records
+     process_records &
   fi
+  # if [[ $records != "[]" ]]; then
+  #   # process the records
+  #   process_records &
+  # fi
   # delete all synced records
   delete_synced_records_in_database &
   # run the bandwidth test
