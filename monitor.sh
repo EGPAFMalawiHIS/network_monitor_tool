@@ -40,12 +40,9 @@ function delete_synced_records_in_database {
 # process all records not synced
 function process_records {
   # get all records not synced
-  records=$(sqlite3 -list /opt/egpaf/monitor/log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 50000;")
-  # loop through ecah record in the list array
-  for record in $records
-  do
-    # get the api key
-    api_key=$(get_api_key)
+  mapfile -t < <(sqlite3 -list /opt/egpaf/monitor/log/transaction.db "SELECT * FROM transactions where sync_status = 0 LIMIT 50000;")
+  # loop through elements in MAPFILE
+  for record in "${MAPFILE[@]}"; do
     # get the record id
     id=$(echo $record | awk -F'|' '{print $1}')
     start_time=$(echo $record | awk -F'|' '{print $2}')
