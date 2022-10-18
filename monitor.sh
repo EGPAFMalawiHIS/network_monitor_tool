@@ -25,7 +25,7 @@ function get_api_key {
 }
 
 function send_data_to_api {
-  response=$(curl --write-out '%{http_code}' --output /dev/null -s --location --request POST "$api" --header "Content-Type: application/json" --data-raw "$1")
+  response=$(curl --write-out '%{http_code}' --output /dev/null -s --location --request POST "$api/api/v1/create" --header "Content-Type: application/json" --data-raw "$1")
   echo $response
 }
 
