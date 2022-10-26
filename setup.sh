@@ -3,7 +3,7 @@
 # change mode uninstall.sh to executable
 sudo chmod +x uninstall.sh
 
-function hubEnviromentSetup {
+function appFolder {
     # check if egpaf monitor folder exists
     if [ ! -d /opt/egpaf/monitor ]; then
         sudo mkdir -p /opt/egpaf/monitor
@@ -16,6 +16,10 @@ function hubEnviromentSetup {
         sudo mkdir -p /opt/egpaf/monitor/log
         sudo chmod 777 /opt/egpaf/monitor/log
     fi
+}
+
+function hubEnviromentSetup {
+    appFolder
 
     # remove .env file if it exists
     if [ -f ./.env ]; then
@@ -37,6 +41,8 @@ function hubEnviromentSetup {
 }
 
 function molecularEnvironmentSetup {
+    appFolder
+
     # remove server.service file if it exists
     if [ -f ./server.service ]; then
         sudo rm ./server.service
@@ -178,6 +184,8 @@ function setupHub {
 function setupMolecularLab {
     # create the service file
     createServerFile
+    sudo cp ./server.sh /opt/egpaf/monitor/server.sh
+    sudo chmod +x /opt/egpaf/monitor/server.sh
     sudo cp ./server.service /etc/systemd/system/egpaf.server.service
     sudo chmod 777 /etc/systemd/system/egpaf.server.service
     sudo systemctl daemon-reload
@@ -227,8 +235,7 @@ Restart=always
 KillMode=process
 
 User=$USER
-ExecStart=iperf3 -s
-ExecStop=killall iperf3
+ExecStart=/bin/bash /opt/egpaf/monitor/server.sh
 
 [Install]
 WantedBy=multi-user.target
