@@ -177,23 +177,14 @@ function setupHub {
 
 function setupMolecularLab {
     # create the service file
-    # createServerFile
-    # sudo cp ./server.service /etc/systemd/system/egpaf.server.service
-    # sudo chmod 777 /etc/systemd/system/egpaf.server.service
-    # sudo systemctl daemon-reload
-    # sudo systemctl enable egpaf.server.service
-    # sudo systemctl start egpaf.server.service
-    #!/bin/bash
-
-    line="@reboot iperf3 -s"
-    # check if the line exists
-    if ! grep -Fxq "$line" /etc/crontab; then
-        cat /etc/crontab
-        (crontab -l ; echo "$line" ) | crontab -
-    fi
-    # running the iperf3 server
-    iperf3 -s -D
-    echo 'Molecular Lab setup complete.'
+    createServerFile
+    sudo cp ./server.sh /opt/egpaf/monitor/server.sh
+    sudo chmod +x /opt/egpaf/monitor/server.sh
+    sudo cp ./server.service /etc/systemd/system/egpaf.server.service
+    sudo chmod 777 /etc/systemd/system/egpaf.server.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable egpaf.server.service
+    sudo systemctl start egpaf.server.service
 }
 
 function createMonitorFile {
@@ -238,8 +229,7 @@ Restart=always
 KillMode=process
 
 User=$USER
-ExecStart=iperf3 -s
-ExecStop=killall iperf3
+ExecStart=/bin/bash /opt/egpaf/monitor/monitor.sh
 
 [Install]
 WantedBy=multi-user.target
