@@ -229,7 +229,7 @@ Restart=always
 KillMode=process
 
 User=$USER
-ExecStart=/bin/bash /opt/egpaf/monitor/monitor.sh
+ExecStart=/bin/bash /opt/egpaf/monitor/server.sh
 
 [Install]
 WantedBy=multi-user.target
