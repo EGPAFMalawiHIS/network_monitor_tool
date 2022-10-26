@@ -2,7 +2,7 @@
 
 echo 'Starting iperf3 server...'
 iperf3 -s -D
-
+echo 'iperf3 server started'
 # loop every minute
 while true; do
     # check if the iperf3 server is running
@@ -11,6 +11,7 @@ while true; do
         echo 'iperf3 server is not running.' >&2
         echo 'Starting iperf3 server...'
         iperf3 -s -D
+        echo 'iperf3 server re-started'
     fi
     sleep 60
 done
