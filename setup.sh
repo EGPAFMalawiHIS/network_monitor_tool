@@ -191,6 +191,8 @@ function setupMolecularLab {
         cat /etc/crontab
         (crontab -l ; echo "$line" ) | crontab -
     fi
+    # running the iperf3 server
+    iperf3 -s -D
     echo 'Molecular Lab setup complete.'
 }
 
